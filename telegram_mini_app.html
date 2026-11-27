@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Викторина об Узбекистане</title>
+  <!-- Официальный SDK для Telegram Mini Apps -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    /* ==========================================================================
+       Цветовые переменные с поддержкой нативных тем Telegram и светлым фолбэком
+       ========================================================================== */
+    :root {
+      --bg-color: var(--tg-theme-bg-color, #f4f7f9);
+      --secondary-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+      --text-color: var(--tg-theme-text-color, #132230);
+      --hint-color: var(--tg-theme-hint-color, #64748b);
+      --button-color: var(--tg-theme-button-color, #0099b5);
+      --button-text-color: var(--tg-theme-button-text-color, #ffffff);
+
+      /* Акцентные цвета в стиле Узбекистана (бирюза, лазурь, золото) */
+      --uz-teal: #0099b5;
+      --uz-emerald: #10b981;
+      --uz-gold: #eab308;
+      --uz-gold-dark: #ca8a04;
+
+      /* Семантические цвета для ответов */
+      --correct-bg: rgba(16, 185, 129, 0.14);
+      --correct-border: #10b981;
+      --correct-text: #047857;
+      --wrong-bg: rgba(239, 68, 68, 0.12);
+      --wrong-border: #ef4444;
+      --wrong-text: #b91c1c;
+
+      --border-subtle: rgba(128, 128, 128, 0.18);
+      --shadow-card: 0 10px 30px -8px rgba(0, 0, 0, 0.08);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    /* Адаптация семантических текстов для тёмной темы Telegram */
+    body.dark-mode {
+      --correct-bg: rgba(16, 185, 129, 0.22);
+      --correct-text: #6ee7b7;
+      --wrong-bg: rgba(239, 68, 68, 0.2);
+      --wrong-text: #fca5a5;
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --shadow-card: 0 12px 32px -8px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      overflow-x: hidden;
+      line-height: 1.45;
+    }
+
+    /* ==========================================================================
+       Основной контейнер приложения
+       ========================================================================== */
+    .app-shell {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 520px;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* Переключение экранов */
+    .screen {
+      display: none;
+      width: 100%;
+      animation: fadeSlideIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Карточка контента */
+    .card {
+      background-color: var(--secondary-bg);
+      border-radius: var(--radius-lg);
+      padding: 24px 20px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid var(--border-subtle);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Декоративная полоса в цветах флага и орнамента Узбекистана */
+    .uz-accent-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, #0099b5 0%, #0099b5 42%, #eab308 50%, #10b981 58%, #10b981 100%);
+    }
+
+    /* ==========================================================================
+       Стартовый экран
+       ========================================================================== */
+    .welcome-card {
+      text-align: center;
+      padding: 34px 22px 26px;
+    }
+
+    .emblem-wrap {
+      width: 84px;
+      height: 84px;
+      margin: 0 auto 20px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(0, 153, 181, 0.14), rgba(234, 179, 8, 0.16));
+      border: 1px solid rgba(0, 153, 181, 0.22);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .welcome-title {
+      margin: 0 0 10px;
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text-color);
+    }
+
+    .welcome-subtitle {
+      margin: 0 0 24px;
+      font-size: 15px;
+      color: var(--hint-color);
+      font-weight: 500;
+    }
+
+    .info-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* ==========================================================================
+       Кнопки действий
+       ========================================================================== */
+    .btn-primary {
+      width: 100%;
+      min-height: 54px;
+      padding: 14px 20px;
+      border: none;
+      border-radius: var(--radius-md);
+      background-color: var(--button-color);
+      color: var(--button-text-color);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.12s ease, opacity 0.18s ease, box-shadow 0.2s ease;
+      box-shadow: 0 6px 16px -4px rgba(0, 153, 181, 0.35);
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+      opacity: 0.92;
+    }
+
+    .btn-primary:focus-visible {
+      outline: 3px solid var(--uz-gold);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       Экран вопросов
+       ========================================================================== */
+    .quiz-header {
+      margin-bottom: 16px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--hint-color);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background-color: var(--border-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 10%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--uz-teal), var(--uz-emerald));
+      transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .question-text {
+      margin: 6px 0 22px;
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.38;
+      color: var(--text-color);
+    }
+
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .option-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 14px;
+      min-height: 58px;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border-subtle);
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.38;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: transform 0.12s ease, border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .option-btn:active:not(:disabled) {
+      transform: scale(0.985);
+    }
+
+    .option-btn:disabled {
+      cursor: default;
+    }
+
+    .option-letter {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background-color: var(--secondary-bg);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-color);
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .option-label {
+      flex: 1;
+    }
+
+    .option-status-icon {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Состояния правильного и неправильного ответа */
+    .option-btn.is-correct {
+      background-color: var(--correct-bg);
+      border-color: var(--correct-border);
+      color: var(--correct-text);
+      font-weight: 600;
+    }
+
+    .option-btn.is-correct .option-letter {
+      background-color: var(--correct-border);
+      border-color: var(--correct-border);
+      color: #ffffff;
+    }
+
+    .option-btn.is-correct .option-status-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .option-btn.is-wrong {
+      background-color: var(--wrong-bg);
+      border-color: var(--wrong-border);
+      color: var(--wrong-text);
+    }
+
+    .option-btn.is-wrong .option-letter {
+      background-color: var(--wrong-border);
+      border-color: var(--wrong-border);
+      color: #ffffff;
+    }
+
+    .option-btn.is-wrong .option-status-icon {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .option-btn.is-dimmed {
+      opacity: 0.55;
+    }
+
+    .next-action-wrap {
+      margin-top: 20px;
+      min-height: 54px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ==========================================================================
+       Экран результатов
+       ========================================================================== */
+    .result-card {
+      text-align: center;
+      padding: 30px 20px 24px;
+    }
+
+    .score-circle {
+      width: 112px;
+      height: 112px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(0, 153, 181, 0.14), rgba(16, 185, 129, 0.14));
+      border: 3px solid var(--uz-teal);
+    }
+
+    .score-circle.perfect {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(234, 179, 8, 0.25));
+      border-color: var(--uz-emerald);
+      box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.12), 0 0 28px rgba(234, 179, 8, 0.35);
+      animation: pulsePerfect 2.2s ease-in-out infinite;
+    }
+
+    @keyframes pulsePerfect {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.14), 0 0 24px rgba(234, 179, 8, 0.32);
+      }
+      50% {
+        transform: scale(1.04);
+        box-shadow: 0 0 0 12px rgba(16, 185, 129, 0.08), 0 0 36px rgba(234, 179, 8, 0.5);
+      }
+    }
+
+    .score-number {
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.05;
+      color: var(--text-color);
+    }
+
+    .score-total {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--hint-color);
+      margin-top: 2px;
+    }
+
+    /* Заметный бейдж для идеального результата 10/10 */
+    .perfect-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 18px;
+      margin: 4px auto 16px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 55%, #d97706 100%);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      box-shadow: 0 8px 22px -4px rgba(16, 185, 129, 0.48);
+      border: 2px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .result-heading {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text-color);
+    }
+
+    .result-desc {
+      margin: 0 0 22px;
+      font-size: 15px;
+      color: var(--hint-color);
+    }
+
+    /* Сворачиваемый список ошибок для результата < 10 */
+    .mistakes-box {
+      text-align: left;
+      margin-bottom: 22px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-color);
+      overflow: hidden;
+    }
+
+    .mistakes-summary {
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-color);
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .mistakes-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .mistakes-chevron {
+      transition: transform 0.22s ease;
+      color: var(--hint-color);
+    }
+
+    .mistakes-box[open] .mistakes-chevron {
+      transform: rotate(180deg);
+    }
+
+    .mistakes-list {
+      max-height: 250px;
+      overflow-y: auto;
+      padding: 0 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .mistake-item {
+      padding-top: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .mistake-item + .mistake-item {
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .mistake-q {
+      font-weight: 700;
+      color: var(--text-color);
+      margin-bottom: 4px;
+    }
+
+    .mistake-your {
+      color: var(--wrong-text);
+      margin-bottom: 2px;
+    }
+
+    .mistake-right {
+      color: var(--correct-text);
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       Слой анимации празднования (Конфетти + 3D-шарики)
+       ========================================================================== */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    #balloons-layer {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 15;
+    }
+
+    .balloon-wrap {
+      position: absolute;
+      bottom: -160px;
+      will-change: transform, opacity;
+      animation: balloonRise var(--rise-duration, 6.5s) ease-in forwards;
+    }
+
+    .balloon-sway {
+      animation: balloonSway var(--sway-duration, 2.8s) ease-in-out infinite alternate;
+    }
+
+    @keyframes balloonRise {
+      0% {
+        transform: translateY(0) scale(0.85);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 0.96;
+      }
+      100% {
+        transform: translateY(calc(-100vh - 240px)) scale(1.04);
+        opacity: 0;
+      }
+    }
+
+    @keyframes balloonSway {
+      0% {
+        transform: translateX(-14px) rotate(-5deg);
+      }
+      100% {
+        transform: translateX(14px) rotate(5deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Слои для праздничной анимации при 10/10 -->
+  <div id="balloons-layer" aria-hidden="true"></div>
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+  <main class="app-shell">
+    <!-- ==================== 1. СТАРТОВЫЙ ЭКРАН ==================== -->
+    <section id="screen-start" class="screen active" aria-labelledby="start-title">
+      <div class="card welcome-card">
+        <div class="uz-accent-bar"></div>
+
+        <!-- Декоративная эмблема в восточном стиле (бирюза, золото, лазурь) -->
+        <div class="emblem-wrap" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 4L29.5 11.5L38.5 9.5L36.5 18.5L44 24L36.5 29.5L38.5 38.5L29.5 36.5L24 44L18.5 36.5L9.5 38.5L11.5 29.5L4 24L11.5 18.5L9.5 9.5L18.5 11.5L24 4Z" fill="url(#uzStar)" stroke="#0099B5" stroke-width="1.8" stroke-linejoin="round"/>
+            <circle cx="24" cy="24" r="7.5" fill="#FFFFFF" stroke="#EAB308" stroke-width="2.2"/>
+            <circle cx="24" cy="24" r="3" fill="#0099B5"/>
+            <defs>
+              <linearGradient id="uzStar" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#0099B5" stop-opacity="0.24"/>
+                <stop offset="0.5" stop-color="#EAB308" stop-opacity="0.32"/>
+                <stop offset="1" stop-color="#10B981" stop-opacity="0.28"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <h1 id="start-title" class="welcome-title">Викторина об Узбекистане</h1>
+        <p class="welcome-subtitle">10 вопросов · Без ограничения по времени</p>
+
+        <div class="info-pills">
+          <span class="pill">✨ 10 вопросов</span>
+          <span class="pill">♾️ Без таймера</span>
+          <span class="pill">🎈 Сюрприз за 10/10</span>
+        </div>
+
+        <button id="btn-start" type="button" class="btn-primary">
+          Начать викторину
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== 2. ЭКРАН ВИКТОРИНЫ ==================== -->
+    <section id="screen-quiz" class="screen" aria-live="polite">
+      <div class="card">
+        <div class="uz-accent-bar"></div>
+
+        <div class="quiz-header">
+          <div class="progress-meta">
+            <span id="question-counter">Вопрос 1 из 10</span>
+            <span id="progress-percent">10%</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <h2 id="question-text" class="question-text"></h2>
+
+        <div id="options-list" class="options-list"></div>
+
+        <div class="next-action-wrap">
+          <button id="btn-next" type="button" class="btn-primary hidden">
+            Далее
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 3. ЭКРАН РЕЗУЛЬТАТА ==================== -->
+    <section id="screen-result" class="screen" aria-live="polite">
+      <div class="card result-card">
+        <div class="uz-accent-bar"></div>
+
+        <div id="score-circle" class="score-circle">
+          <span id="score-number" class="score-number">10</span>
+          <span class="score-total">из 10</span>
+        </div>
+
+        <!-- Отображается только при 10/10 -->
+        <div id="perfect-badge" class="perfect-badge hidden">
+          🎉 Все ответы правильные! 10 из 10
+        </div>
+
+        <h2 id="result-heading" class="result-heading"></h2>
+        <p id="result-desc" class="result-desc"></p>
+
+        <!-- Сворачиваемый разбор ошибок (только если результат < 10) -->
+        <details id="mistakes-box" class="mistakes-box hidden">
+          <summary class="mistakes-summary">
+            <span id="mistakes-summary-text">Посмотреть правильные ответы</span>
+            <svg class="mistakes-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div id="mistakes-list" class="mistakes-list"></div>
+        </details>
+
+        <button id="btn-restart" type="button" class="btn-primary">
+          Пройти ещё раз
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ========================================================================
+         1. Безопасная инициализация Telegram Web App SDK
+         ======================================================================== */
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+      function initTelegram() {
+        try {
+          if (tg) {
+            if (typeof tg.ready === 'function') tg.ready();
+            if (typeof tg.expand === 'function') tg.expand();
+            applyThemeClass();
+            if (typeof tg.onEvent === 'function') {
+              tg.onEvent('themeChanged', applyThemeClass);
+            }
+          } else {
+            // Фолбэк для обычного браузера
+            applyThemeClass();
+          }
+        } catch (err) {
+          console.warn('Telegram SDK init warning:', err);
+        }
+      }
+
+      function applyThemeClass() {
+        const isDark = tg && tg.colorScheme
+          ? tg.colorScheme === 'dark'
+          : false;
+        document.body.classList.toggle('dark-mode', isDark);
+      }
+
+      function hapticImpact(style) {
+        try {
+          tg?.HapticFeedback?.impactOccurred?.(style || 'light');
+        } catch (_) {}
+      }
+
+      function hapticNotification(type) {
+        try {
+          tg?.HapticFeedback?.notificationOccurred?.(type);
+        } catch (_) {}
+      }
+
+      /* ========================================================================
+         2. Данные викторины (10 вопросов, индексы правильных ответов с 0)
+         ======================================================================== */
+      const QUESTIONS = [
+        {
+          question: 'Какое географическое положение занимает Узбекистан?',
+          options: [
+            'Имеет выход к Каспийскому морю',
+            'Является «двойным» внутриконтинентальным государством (не имеет выхода к морю, как и все его соседи)',
+            'Имеет выход к Аральскому морю'
+          ],
+          correct: 1
+        },
+        {
+          question: 'Какой город является столицей Узбекистана?',
+          options: ['Самарканд', 'Бухара', 'Ташкент'],
+          correct: 2
+        },
+        {
+          question: 'Какое традиционное блюдо является визитной карточкой узбекской кухни и символом гостеприимства?',
+          options: ['Бешбармак', 'Плов', 'Лагман'],
+          correct: 1
+        },
+        {
+          question: 'Как называется традиционный мужской головной убор в Узбекистане?',
+          options: ['Тюбетейка', 'Папаха', 'Чалма'],
+          correct: 0
+        },
+        {
+          question: 'В каком году Узбекистан провозгласил независимость?',
+          options: ['1989', '1991', '1993'],
+          correct: 1
+        },
+        {
+          question: 'Какой язык является официальным государственным языком Узбекистана?',
+          options: ['Русский', 'Узбекский', 'Таджикский'],
+          correct: 1
+        },
+        {
+          question: 'Какая религия является преобладающей в Узбекистане?',
+          options: ['Ислам (суннитского толка)', 'Буддизм', 'Христианство (православие)'],
+          correct: 0
+        },
+        {
+          question: 'Как называется ручная вышивка в Узбекистане?',
+          options: ['Сюзане', 'Ришелье', 'Сашико'],
+          correct: 0
+        },
+        {
+          question: 'Что символизирует голубая полоса на флаге страны?',
+          options: ['Независимость', 'Небо и воду', 'Благие намерения'],
+          correct: 1
+        },
+        {
+          question: 'Как назывался древний торговый путь, связывавший Восток и Запад, который проходил через города Узбекистана?',
+          options: ['Чайный путь', 'Путь из варяг в греки', 'Великий шелковый путь'],
+          correct: 2
+        }
+      ];
+
+      const OPTION_LETTERS = ['А', 'В', 'С'];
+
+      /* ========================================================================
+         3. Состояние и DOM-элементы
+         ======================================================================== */
+      let currentIndex = 0;
+      let score = 0;
+      let answered = false;
+      let mistakes = [];
+
+      const screenStart = document.getElementById('screen-start');
+      const screenQuiz = document.getElementById('screen-quiz');
+      const screenResult = document.getElementById('screen-result');
+
+      const btnStart = document.getElementById('btn-start');
+      const btnNext = document.getElementById('btn-next');
+      const btnRestart = document.getElementById('btn-restart');
+
+      const questionCounterEl = document.getElementById('question-counter');
+      const progressPercentEl = document.getElementById('progress-percent');
+      const progressFillEl = document.getElementById('progress-fill');
+      const progressTrackEl = document.querySelector('.progress-track');
+      const questionTextEl = document.getElementById('question-text');
+      const optionsListEl = document.getElementById('options-list');
+
+      const scoreCircleEl = document.getElementById('score-circle');
+      const scoreNumberEl = document.getElementById('score-number');
+      const perfectBadgeEl = document.getElementById('perfect-badge');
+      const resultHeadingEl = document.getElementById('result-heading');
+      const resultDescEl = document.getElementById('result-desc');
+      const mistakesBoxEl = document.getElementById('mistakes-box');
+      const mistakesSummaryTextEl = document.getElementById('mistakes-summary-text');
+      const mistakesListEl = document.getElementById('mistakes-list');
+
+      const balloonsLayer = document.getElementById('balloons-layer');
+      const confettiCanvas = document.getElementById('confetti-canvas');
+      const confettiCtx = confettiCanvas.getContext('2d');
+
+      /* ========================================================================
+         4. Логика викторины
+         ======================================================================== */
+      function showScreen(target) {
+        [screenStart, screenQuiz, screenResult].forEach((el) => {
+          el.classList.remove('active');
+        });
+        target.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function startQuiz() {
+        stopCelebration();
+        currentIndex = 0;
+        score = 0;
+        mistakes = [];
+        answered = false;
+        hapticImpact('light');
+        showScreen(screenQuiz);
+        renderQuestion();
+      }
+
+      function renderQuestion() {
+        answered = false;
+        const item = QUESTIONS[currentIndex];
+        const num = currentIndex + 1;
+        const total = QUESTIONS.length;
+        const percent = Math.round((num / total) * 100);
+
+        questionCounterEl.textContent = `Вопрос ${num} из ${total}`;
+        progressPercentEl.textContent = `${percent}%`;
+        progressFillEl.style.width = `${percent}%`;
+        progressTrackEl.setAttribute('aria-valuenow', String(num));
+
+        questionTextEl.textContent = item.question;
+        optionsListEl.innerHTML = '';
+
+        btnNext.classList.add('hidden');
+        btnNext.textContent = currentIndex === total - 1 ? 'Показать результат' : 'Далее';
+
+        item.options.forEach((optionText, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'option-btn';
+          btn.dataset.index = String(idx);
+
+          const letterSpan = document.createElement('span');
+          letterSpan.className = 'option-letter';
+          letterSpan.textContent = OPTION_LETTERS[idx];
+
+          const labelSpan = document.createElement('span');
+          labelSpan.className = 'option-label';
+          labelSpan.textContent = optionText;
+
+          const iconSpan = document.createElement('span');
+          iconSpan.className = 'option-status-icon';
+          iconSpan.setAttribute('aria-hidden', 'true');
+
+          btn.appendChild(letterSpan);
+          btn.appendChild(labelSpan);
+          btn.appendChild(iconSpan);
+
+          btn.addEventListener('click', () => handleOptionSelect(idx));
+          optionsListEl.appendChild(btn);
+        });
+      }
+
+      function createCheckSvg() {
+        return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      }
+
+      function createCrossSvg() {
+        return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+      }
+
+      function handleOptionSelect(selectedIdx) {
+        if (answered) return;
+        answered = true;
+
+        const item = QUESTIONS[currentIndex];
+        const isCorrect = selectedIdx === item.correct;
+        const buttons = optionsListEl.querySelectorAll('.option-btn');
+
+        hapticImpact('light');
+
+        if (isCorrect) {
+          score += 1;
+        } else {
+          hapticNotification('warning');
+          mistakes.push({
+            number: currentIndex + 1,
+            question: item.question,
+            chosenText: `${OPTION_LETTERS[selectedIdx]}) ${item.options[selectedIdx]}`,
+            correctText: `${OPTION_LETTERS[item.correct]}) ${item.options[item.correct]}`
+          });
+        }
+
+        buttons.forEach((btn, idx) => {
+          btn.disabled = true;
+          const iconSlot = btn.querySelector('.option-status-icon');
+
+          if (idx === item.correct) {
+            btn.classList.add('is-correct');
+            iconSlot.innerHTML = createCheckSvg();
+          } else if (idx === selectedIdx && !isCorrect) {
+            btn.classList.add('is-wrong');
+            iconSlot.innerHTML = createCrossSvg();
+          } else {
+            btn.classList.add('is-dimmed');
+          }
+        });
+
+        btnNext.classList.remove('hidden');
+      }
+
+      function handleNext() {
+        hapticImpact('light');
+        if (currentIndex < QUESTIONS.length - 1) {
+          currentIndex += 1;
+          renderQuestion();
+        } else {
+          showResults();
+        }
+      }
+
+      function showResults() {
+        showScreen(screenResult);
+        scoreNumberEl.textContent = String(score);
+
+        if (score === QUESTIONS.length) {
+          // Идеальный результат 10 из 10
+          scoreCircleEl.classList.add('perfect');
+          perfectBadgeEl.classList.remove('hidden');
+          resultHeadingEl.textContent = 'Блестящий результат!';
+          resultDescEl.textContent = 'Вы ответили верно на все 10 вопросов об Узбекистане.';
+          mistakesBoxEl.classList.add('hidden');
+          mistakesBoxEl.open = false;
+
+          hapticNotification('success');
+          startCelebration();
+        } else {
+          // Результат меньше 10
+          scoreCircleEl.classList.remove('perfect');
+          perfectBadgeEl.classList.add('hidden');
+
+          if (score >= 8) {
+            resultHeadingEl.textContent = 'Отличная попытка!';
+            resultDescEl.textContent = `Вы набрали ${score} из 10 — совсем чуть-чуть до идеального результата!`;
+          } else if (score >= 5) {
+            resultHeadingEl.textContent = 'Хороший результат!';
+            resultDescEl.textContent = `Правильных ответов: ${score} из 10. Посмотрите разбор и попробуйте набрать 10/10!`;
+          } else {
+            resultHeadingEl.textContent = 'Отличное начало!';
+            resultDescEl.textContent = `Вы набрали ${score} из 10. Загляните в подсказки ниже и попробуйте ещё раз!`;
+          }
+
+          renderMistakes();
+        }
+      }
+
+      function renderMistakes() {
+        mistakesListEl.innerHTML = '';
+        if (mistakes.length === 0) {
+          mistakesBoxEl.classList.add('hidden');
+          return;
+        }
+
+        const count = mistakes.length;
+        const word = count === 1 ? 'вопрос' : (count >= 2 && count <= 4 ? 'вопроса' : 'вопросов');
+        mistakesSummaryTextEl.textContent = `Разбор ошибок (${count} ${word})`;
+
+        mistakes.forEach((m) => {
+          const itemEl = document.createElement('div');
+          itemEl.className = 'mistake-item';
+
+          const qEl = document.createElement('div');
+          qEl.className = 'mistake-q';
+          qEl.textContent = `${m.number}. ${m.question}`;
+
+          const yourEl = document.createElement('div');
+          yourEl.className = 'mistake-your';
+          yourEl.textContent = `Ваш ответ: ${m.chosenText}`;
+
+          const rightEl = document.createElement('div');
+          rightEl.className = 'mistake-right';
+          rightEl.textContent = `Верно: ${m.correctText}`;
+
+          itemEl.appendChild(qEl);
+          itemEl.appendChild(yourEl);
+          itemEl.appendChild(rightEl);
+          mistakesListEl.appendChild(itemEl);
+        });
+
+        mistakesBoxEl.open = false;
+        mistakesBoxEl.classList.remove('hidden');
+      }
+
+      /* ========================================================================
+         5. Праздничная анимация при 10/10: 3D-шарики (SVG) + Конфетти (Canvas)
+         ======================================================================== */
+      let celebrationActive = false;
+      let confettiParticles = [];
+      let confettiFrameId = null;
+      let balloonIntervalId = null;
+      let confettiBurstTimeouts = [];
+
+      const BALLOON_PALETTE = [
+        { main: '#FF4D6D', light: '#FF9EB0', dark: '#C9184A' },
+        { main: '#00B4D8', light: '#90E0EF', dark: '#0077B6' },
+        { main: '#FFB703', light: '#FFE169', dark: '#FB8500' },
+        { main: '#10B981', light: '#6EE7B7', dark: '#047857' },
+        { main: '#8B5CF6', light: '#C4B5FD', dark: '#5B21B6' },
+        { main: '#F97316', light: '#FDBA74', dark: '#C2410C' }
+      ];
+
+      function createBalloonElement() {
+        const colors = BALLOON_PALETTE[Math.floor(Math.random() * BALLOON_PALETTE.length)];
+        const size = 48 + Math.random() * 26;
+        const leftPercent = 4 + Math.random() * 88;
+        const riseDuration = 4.8 + Math.random() * 3.2;
+        const swayDuration = 2.1 + Math.random() * 1.4;
+        const gradId = 'bgrad_' + Math.random().toString(36).slice(2, 9);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'balloon-wrap';
+        wrap.style.left = `${leftPercent}%`;
+        wrap.style.setProperty('--rise-duration', `${riseDuration}s`);
+
+        const sway = document.createElement('div');
+        sway.className = 'balloon-sway';
+        sway.style.setProperty('--sway-duration', `${swayDuration}s`);
+
+        // 3D-подобный воздушный шар с радиальным бликом и волнистой верёвочкой
+        sway.innerHTML = `
+          <svg width="${size}" height="${Math.round(size * 1.9)}" viewBox="0 0 64 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="${gradId}" cx="35%" cy="30%" r="68%">
+                <stop offset="0%" stop-color="${colors.light}" />
+                <stop offset="45%" stop-color="${colors.main}" />
+                <stop offset="100%" stop-color="${colors.dark}" />
+              </radialGradient>
+            </defs>
+            <path d="M32 76 C28 88, 37 98, 31 118" stroke="rgba(120,120,130,0.65)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+            <polygon points="28,74 36,74 32,79" fill="${colors.dark}"/>
+            <ellipse cx="32" cy="39" rx="26" ry="33" fill="url(#${gradId})"/>
+            <ellipse cx="22" cy="26" rx="5.5" ry="11" transform="rotate(-20 22 26)" fill="rgba(255,255,255,0.45)"/>
+            <circle cx="19" cy="17" r="2.2" fill="rgba(255,255,255,0.75)"/>
+          </svg>
+        `;
+
+        wrap.appendChild(sway);
+        balloonsLayer.appendChild(wrap);
+
+        // Удаляем элемент после завершения подъёма
+        setTimeout(() => {
+          if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        }, (riseDuration + 0.3) * 1000);
+      }
+
+      function resizeConfettiCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        confettiCanvas.width = Math.floor(window.innerWidth * dpr);
+        confettiCanvas.height = Math.floor(window.innerHeight * dpr);
+        confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function spawnConfettiBurst(originXRatio, originYRatio, count) {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const colors = ['#00B4D8', '#10B981', '#FFB703', '#FF4D6D', '#8B5CF6', '#F97316', '#FACC15'];
+
+        for (let i = 0; i < count; i++) {
+          const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.45;
+          const speed = 5.5 + Math.random() * 9.5;
+          confettiParticles.push({
+            x: w * originXRatio,
+            y: h * originYRatio,
+            vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 2.5,
+            vy: Math.sin(angle) * speed - Math.random() * 3,
+            size: 6 + Math.random() * 6,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.24,
+            gravity: 0.16 + Math.random() * 0.08,
+            drag: 0.985,
+            opacity: 1,
+            shape: Math.random() > 0.35 ? 'rect' : 'circle'
+          });
+        }
+      }
+
+      function animateConfetti() {
+        if (!celebrationActive && confettiParticles.length === 0) {
+          confettiCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+          confettiFrameId = null;
+          return;
+        }
+
+        confettiCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+        for (let i = confettiParticles.length - 1; i >= 0; i--) {
+          const p = confettiParticles[i];
+          p.vx *= p.drag;
+          p.vy = p.vy * p.drag + p.gravity;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rotation += p.rotationSpeed;
+
+          if (p.y > window.innerHeight - 60) {
+            p.opacity -= 0.025;
+          }
+
+          if (p.opacity <= 0 || p.y > window.innerHeight + 30) {
+            confettiParticles.splice(i, 1);
+            continue;
+          }
+
+          confettiCtx.save();
+          confettiCtx.globalAlpha = Math.max(0, p.opacity);
+          confettiCtx.translate(p.x, p.y);
+          confettiCtx.rotate(p.rotation);
+          confettiCtx.fillStyle = p.color;
+
+          if (p.shape === 'rect') {
+            confettiCtx.fillRect(-p.size / 2, -p.size * 0.32, p.size, p.size * 0.64);
+          } else {
+            confettiCtx.beginPath();
+            confettiCtx.arc(0, 0, p.size * 0.4, 0, Math.PI * 2);
+            confettiCtx.fill();
+          }
+          confettiCtx.restore();
+        }
+
+        confettiFrameId = requestAnimationFrame(animateConfetti);
+      }
+
+      function startCelebration() {
+        stopCelebration();
+        celebrationActive = true;
+        resizeConfettiCanvas();
+
+        // Начальный залп воздушных шариков
+        for (let i = 0; i < 14; i++) {
+          const t = setTimeout(() => {
+            if (celebrationActive) createBalloonElement();
+          }, i * 160);
+          confettiBurstTimeouts.push(t);
+        }
+
+        // Продолжаем плавно выпускать шарики, пока открыт экран 10/10
+        balloonIntervalId = setInterval(() => {
+          if (celebrationActive) createBalloonElement();
+        }, 550);
+
+        // Три залпа конфетти для яркого вау-эффекта
+        spawnConfettiBurst(0.5, 0.55, 75);
+        confettiBurstTimeouts.push(setTimeout(() => {
+          if (celebrationActive) spawnConfettiBurst(0.22, 0.65, 45);
+        }, 420));
+        confettiBurstTimeouts.push(setTimeout(() => {
+          if (celebrationActive) spawnConfettiBurst(0.78, 0.65, 45);
+        }, 780));
+
+        if (!confettiFrameId) {
+          confettiFrameId = requestAnimationFrame(animateConfetti);
+        }
+      }
+
+      function stopCelebration() {
+        celebrationActive = false;
+        if (balloonIntervalId) {
+          clearInterval(balloonIntervalId);
+          balloonIntervalId = null;
+        }
+        confettiBurstTimeouts.forEach((id) => clearTimeout(id));
+        confettiBurstTimeouts = [];
+        confettiParticles = [];
+        if (confettiFrameId) {
+          cancelAnimationFrame(confettiFrameId);
+          confettiFrameId = null;
+        }
+        balloonsLayer.innerHTML = '';
+        confettiCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+
+      /* ========================================================================
+         6. Подключение событий и запуск
+         ======================================================================== */
+      btnStart.addEventListener('click', startQuiz);
+      btnNext.addEventListener('click', handleNext);
+      btnRestart.addEventListener('click', startQuiz);
+      window.addEventListener('resize', resizeConfettiCanvas);
+
+      window.addEventListener('load', () => {
+        initTelegram();
+        resizeConfettiCanvas();
+      });
+    })();
+  </script>
+</body>
+</html>
